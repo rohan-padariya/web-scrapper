@@ -1,0 +1,24 @@
+{
+  "name": "web-scrapper",
+  "version": "1.0.0",
+  "description": "script to read web page and gets word count",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rohan-padariya/web-scrapper.git"
+  },
+  "author": "Rohan Padariya",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rohan-padariya/web-scrapper/issues"
+  },
+  "homepage": "https://github.com/rohan-padariya/web-scrapper#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.10",
+    "minimist": "^1.2.5",
+    "request": "^2.88.2"
+  }
+}
