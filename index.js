@@ -1,84 +1,67 @@
-const request = require("request");
+const axios = require("axios");
 const cheerio = require("cheerio");
 
-const args = require('minimist')(process.argv)
+const args = require("minimist")(process.argv);
 
-function main() {
+async function main() {
+    console.log("INFO :: For exact word match use --exact=true");
 
-    console.log('INFO :: For exact word match use --exact=true')
+    // Checking required options
+    if (!(args.hasOwnProperty("url") && args.hasOwnProperty("words"))) {
+        return console.error("INFO :: url and words parameters are expected.");
+    }
 
-    if (!(args.hasOwnProperty('url') && args.hasOwnProperty('words'))) {
-        return console.error('INFO :: url and words parameters are expected.')
-    } else {
-        try {
+    // Extract inputs
+    const URL = args["url"];
+    const words = (typeof args['words'] !== 'string') ? [args['words'].toString()] : args["words"].split(",");
+    const isExactMatch = args["exact"] === "true" ? true : false;
 
-            let url = args['url'];
+    // Fetch & Extract details
+    try {
+        console.log("INFO :: Validating URL and getting data from URL...");
+        const response = await axios(URL);
 
-            let wordsArr = []
-            if (args['words']) {
-                if (typeof args['words'] != 'string') {
-                    wordsArr = [args['words'].toString()];
-                } else {
-                    wordsArr = args['words'].split(',')
-                }
-            }
+        // Load response
+        const $ = cheerio.load(response.data);
 
-            let exactMatch = args['exact'] == 'true' ? true : false
+        // Remove unnecessary parts
+        $("title").empty();
+        $("script").empty();
+        $("noscript").empty();
 
-            console.log('INFO :: Validating URL and getting data from URL...')
+        // Extract web text content
+        const webContent = $("body *")
+            .contents()
+            .map(function () {
+                return this.type === "text" ? $(this).text() + " " : "";
+            })
+            .get()
+            .join("")
+            .toLowerCase();
 
-            request(url, function (error, response, html) {
-                if (!error && response.statusCode == 200) {
+        // Extract occurrences results
+        const results = words.reduce((result, word, index) => {
+            const wordToMatch = word.toLowerCase();
+            const match = isExactMatch ? `\\b(${wordToMatch})\\b` : wordToMatch;
+            const occurrences = webContent.match(new RegExp(match, "gi"));
+            result[words[index]] = occurrences ? occurrences.length : 0;
+            return result;
+        }, {});
 
-                    console.log('INFO :: Parsing data...')
+        console.log("INFO :: Printing word occurences");
+        console.log("INFO :: Exact match Enabled : ", isExactMatch);
 
-                    const $ = cheerio.load(html);
-
-                    $('title').empty();
-                    $('script').empty();
-                    $('noscript').empty();
-
-                    var textData = $('body *').contents().map(function () {
-                        return (this.type === 'text') ? $(this).text() + ' ' : '';
-                    }).get().join('');
-
-                    textData = textData.toLowerCase()
-
-                    let json = {}
-
-                    wordsArr.forEach((word, index) => {
-
-                        word = word.toLowerCase()
-                        let regex = word;
-                        if (exactMatch) {
-                            regex = '\\b(' + word + ')\\b'
-                        }
-                        let occurrences = textData.match(new RegExp(regex, "gi"))
-                        // console.log(occurrences)
-                        json[wordsArr[index]] = occurrences ? occurrences.length : 0
-
-                    })
-
-                    console.log('INFO :: Printing word occurences')
-                    console.log('INFO :: Exact match Enabled : ', exactMatch)
-                    //printing words occurences
-                    console.log('-------------------------------')
-                    Object.keys(json).forEach(key => {
-                        console.log(key, ' - ', json[key])
-                    })
-                    console.log('-------------------------------')
-
-                }
-                else {
-                    console.log('INFO :: Failure (Invalid URL)' + error);
-                }
-            });
-        } catch (error) {
-            console.log('INFO :: Someting went wrong :' + error)
+        //printing words occurences
+        console.log("-------------------------------");
+        for (const [key, value] of Object.entries(results)) {
+            console.log(`${key} - ${value}`);
         }
+        console.log("-------------------------------");
+    } catch (error) {
+        // Default error handling
+        console.log("ERROR :: Someting went wrong :", error.message || error);
     }
 }
 
-//driver function
-main()
-
+//start
+main();
